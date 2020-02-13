@@ -40,7 +40,7 @@ function _setup {
     esac
 
     # Check exists firebase project.
-    firebase list | grep ${PROJECT_ID} &> /dev/null &&:
+    firebase projects:list | grep ${PROJECT_ID} &> /dev/null &&:
     if [[ $? -eq 1 ]]; then
         echo -e "\n\033[41mFirebase project '${PROJECT_ID}' not found\033[0m\n"
         exit 1
