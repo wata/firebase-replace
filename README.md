@@ -1,51 +1,52 @@
-# firebase-manage
+# firebase-replace
 
-```sh
-firebase-manage.sh is a Firebase management tool.
+NPM package for backup, restore, delete and replace Firebase
 
-Usage:
-    firebase-manage.sh [command] [<options>]
+## Installation
 
-Options:
-    --version, -v     Print firebase-manage.sh version.
-    --help, -h        Print this.
+Install the firebase-replace CLI as a global CLI.
 
-Commands:
-    backup            Backup Firestore, Authentication, Storage.
-    restore           Restore Firestore, Authentication, Storage with deploying project.
-    delete            Delete Firestore, Storage.
-    replace           Delete and restore.
+```
+npm install -g firebase-replace
 ```
 
-## Dependencies
-- [firestore-backup-restore](https://github.com/willhlaw/node-firestore-backup-restore)
-- [firebase-tools](https://github.com/firebase/firebase-tools)
-- [gsutil](https://cloud.google.com/storage/docs/gsutil_install)
+## Get Firebase Service Account File
 
-## Retrieving Firebase Service Account File
 1. Visit the Firebase Console
 1. Select your project
 1. Navigate to Project Settings (at the time of writing the gear icon button at the top left of the page).
 1. Navigate to Service Accounts
 1. Click Generate New Private Key
 
-This downloaded json file contains the proper credentials needed for `firestore-backup-restore` to authenticate.
+## Set environment variables
 
-## Tips
+```sh
+# Your Firebase Project ID
+export FIREBASE_PROJECT_ID=XXXX-XXXXX
 
-- Fix firestore timestamp warnings
+# Your Firebase Service Account File Path
+export GOOGLE_APPLICATION_CREDENTIALS=./XXXX-XXXXX-firebase-adminsdk-XXXXX-XXXXXXXXXX.json
+```
 
-    ```sh
-    npm install -g kitfit-dave/node-firestore-backup-restore
-    ```
+## Usage
 
-- Use environment variables for `PROJECT_ID` and `SERVICE_ACCOUNT_FILE`
+```sh
+# Backup Firestore, Authentication, Storage
+firebase-replace backup
+tree ./data
+# data
+# ├── auth
+# │   └── users.json
+# ├── firestore
+# │   └── collections.json
+# └── storage
 
-    => [DotenvではなくDirenvを使う](https://deeeet.com/writing/2014/05/06/direnv/) (ja)
+# Restore Firestore, Authentication, Storage
+firebase-replace restore
 
-- Ignore `.DS_Store`
+# Delete Firestore, Authentication, Storage
+firebase-replace delete
 
-    ```sh
-    find ./ -name ".DS_Store" -print -exec rm {} ";"
-    killall Finder
-    ```
+# Delete and restore
+firebase-replace replace
+```
