@@ -53,7 +53,11 @@ const backup = async () => {
 const restore = async () => {
   // Firestore
   if (await directoryExists(FIRESTORE_DATA_PATH)) {
-    await firestoreRestore(`${FIRESTORE_DATA_PATH}/collections.json`)
+    const options = {
+      autoParseDates: true,
+      autoParseGeos: true,
+    }
+    await firestoreRestore(`${FIRESTORE_DATA_PATH}/collections.json`, options)
   }
 
   // Authentication
@@ -101,7 +105,7 @@ const checkEnv = () => {
 }
 
 program
-  .version('0.0.4')
+  .version('0.0.5')
   .description('NPM package for backup, restore, delete and replace Firebase')
 
 program

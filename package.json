@@ -1,6 +1,6 @@
 {
   "name": "firebase-replace",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "NPM package for backup, restore, delete and replace Firebase",
   "author": "Wataru Nagasawa <me@wata.dev>",
   "repository": "https://github.com/wata/firebase-replace",
@@ -17,13 +17,13 @@
     "chalk": "^4.1.1",
     "child_process": "^1.0.2",
     "commander": "^7.2.0",
-    "firebase-admin": "^9.7.0",
+    "firebase-admin": "^9.8.0",
     "firebase-tools": "^9.10.2",
-    "firestore-export-import": "^0.14.0"
+    "firestore-export-import": "github:wata/firestore-backup-restore#feature/add-option-auto-location-parsing"
   },
   "devDependencies": {
     "@types/commander": "^2.12.2",
-    "@types/node": "^15.0.2",
+    "@types/node": "^15.0.3",
     "ts-node": "^9.1.1",
     "typescript": "^4.2.4"
   }
