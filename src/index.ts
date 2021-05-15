@@ -105,7 +105,7 @@ const checkEnv = () => {
 }
 
 program
-  .version('0.0.5')
+  .version('0.0.6')
   .description('NPM package for backup, restore, delete and replace Firebase')
 
 program
