@@ -1,6 +1,6 @@
 {
   "name": "firebase-replace",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "NPM package for backup, restore, delete and replace Firebase",
   "author": "Wataru Nagasawa <me@wata.dev>",
   "repository": "https://github.com/wata/firebase-replace",
@@ -11,7 +11,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "publish-package": "npm run build && npm publish"
+    "local": "npm install && npm run build && npm i -g",
+    "publish-package": "npm install && npm run build && npm publish"
   },
   "dependencies": {
     "chalk": "^4.1.1",

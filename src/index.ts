@@ -16,6 +16,11 @@ const AUTH_DATA_PATH = 'data/auth'
 const STORAGE_DATA_PATH = 'data/storage'
 const STORAGE_BUCKET = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
 
+const anyFileExists = async (path: string) => {
+  const files = await fs.readdir(path)
+  return files.length > 0
+}
+
 const directoryExists = async (path: string) => {
   return await fs.stat(path)
     .then((stats) => stats.isDirectory())
@@ -53,11 +58,10 @@ const backup = async () => {
 const restore = async () => {
   // Firestore
   if (await directoryExists(FIRESTORE_DATA_PATH)) {
-    const options = {
+    await firestoreRestore(`${FIRESTORE_DATA_PATH}/collections.json`, {
       autoParseDates: true,
       autoParseGeos: true,
-    }
-    await firestoreRestore(`${FIRESTORE_DATA_PATH}/collections.json`, options)
+    })
   }
 
   // Authentication
@@ -69,7 +73,7 @@ const restore = async () => {
   }
 
   // Storage
-  if (await directoryExists(STORAGE_DATA_PATH)) {
+  if (await anyFileExists(STORAGE_DATA_PATH)) {
     // > If you experience problems with multiprocessing on MacOS, they might be related to https://bugs.python.org/issue33725.
     // > You can disable multiprocessing by editing your.boto config or by adding the following flag to your command: `-o "GSUtil:parallel_process_count=1"`.
     // > Note that multithreading is still available even if you disable multiprocessing.
@@ -105,7 +109,7 @@ const checkEnv = () => {
 }
 
 program
-  .version('0.0.6')
+  .version('0.0.7')
   .description('NPM package for backup, restore, delete and replace Firebase')
 
 program
