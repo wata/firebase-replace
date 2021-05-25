@@ -11,10 +11,18 @@ import * as admin from 'firebase-admin'
 admin.initializeApp({ credential: admin.credential.applicationDefault() })
 import { backups as firestoreBackups, restore as firestoreRestore } from 'firestore-export-import'
 
-const FIRESTORE_DATA_PATH = 'data/firestore'
-const AUTH_DATA_PATH = 'data/auth'
-const STORAGE_DATA_PATH = 'data/storage'
+const FIRESTORE_DATA_DIR = 'data/firestore'
+const FIRESTORE_DATA_PATH = `${FIRESTORE_DATA_DIR}/collections.json`
+const AUTH_DATA_DIR = 'data/auth'
+const AUTH_DATA_PATH = `${AUTH_DATA_DIR}/users.json`
+const STORAGE_DATA_DIR = 'data/storage'
 const STORAGE_BUCKET = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
+
+const fileExists = async (path: string) => {
+    return await fs.access(path)
+        .then(() => true)
+        .catch(() => false)
+}
 
 const anyFileExists = async (path: string) => {
   const files = await fs.readdir(path)
@@ -37,47 +45,47 @@ const makeOrRemoveDirectory = async (path: string) => {
 
 const backup = async () => {
   // Firestore
-  await makeOrRemoveDirectory(FIRESTORE_DATA_PATH)
+  await makeOrRemoveDirectory(FIRESTORE_DATA_DIR)
   const collections = await firestoreBackups()
-  await fs.writeFile(`${FIRESTORE_DATA_PATH}/collections.json`, JSON.stringify(collections, null, '  '))
+  await fs.writeFile(FIRESTORE_DATA_PATH, JSON.stringify(collections, null, '  '))
 
   // Authentication
-  await makeOrRemoveDirectory(AUTH_DATA_PATH)
-  await tools.auth.export(`${AUTH_DATA_PATH}/users.json`)
+  await makeOrRemoveDirectory(AUTH_DATA_DIR)
+  await tools.auth.export(AUTH_DATA_PATH)
 
   // Storage
-  await makeOrRemoveDirectory(STORAGE_DATA_PATH)
+  await makeOrRemoveDirectory(STORAGE_DATA_DIR)
   if ((await execPromise(`gsutil ls gs://${STORAGE_BUCKET}`)).stdout) {
     // > If you experience problems with multiprocessing on MacOS, they might be related to https://bugs.python.org/issue33725.
     // > You can disable multiprocessing by editing your.boto config or by adding the following flag to your command: `-o "GSUtil:parallel_process_count=1"`.
     // > Note that multithreading is still available even if you disable multiprocessing.
-    await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r gs://${STORAGE_BUCKET}/* ${STORAGE_DATA_PATH}`)
+    await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r gs://${STORAGE_BUCKET}/* ${STORAGE_DATA_DIR}`)
   }
 }
 
 const restore = async () => {
   // Firestore
-  if (await directoryExists(FIRESTORE_DATA_PATH)) {
-    await firestoreRestore(`${FIRESTORE_DATA_PATH}/collections.json`, {
+  if (await fileExists(FIRESTORE_DATA_PATH)) {
+    await firestoreRestore(FIRESTORE_DATA_PATH, {
       autoParseDates: true,
       autoParseGeos: true,
     })
   }
 
   // Authentication
-  if (await directoryExists(AUTH_DATA_PATH)) {
-    await tools.auth.upload(`${AUTH_DATA_PATH}/users.json`, {
+  if (await fileExists(AUTH_DATA_PATH)) {
+    await tools.auth.upload(AUTH_DATA_PATH, {
       hashAlgo: 'HMAC_SHA256',
       hashKey: 'N2RheXM=',
     })
   }
 
   // Storage
-  if (await anyFileExists(STORAGE_DATA_PATH)) {
+  if (await anyFileExists(STORAGE_DATA_DIR)) {
     // > If you experience problems with multiprocessing on MacOS, they might be related to https://bugs.python.org/issue33725.
     // > You can disable multiprocessing by editing your.boto config or by adding the following flag to your command: `-o "GSUtil:parallel_process_count=1"`.
     // > Note that multithreading is still available even if you disable multiprocessing.
-    await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r ${STORAGE_DATA_PATH}/* gs://${STORAGE_BUCKET}`)
+    await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r ${STORAGE_DATA_DIR}/* gs://${STORAGE_BUCKET}`)
   }
 }
 
@@ -109,7 +117,7 @@ const checkEnv = () => {
 }
 
 program
-  .version('0.0.7')
+  .version('0.0.8')
   .description('NPM package for backup, restore, delete and replace Firebase')
 
 program
