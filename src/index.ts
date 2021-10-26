@@ -20,8 +20,8 @@ const STORAGE_BUCKET = `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
 
 const fileExists = async (path: string) => {
     return await fs.access(path)
-        .then(() => true)
-        .catch(() => false)
+      .then(() => true)
+      .catch(() => false)
 }
 
 const anyFileExists = async (path: string) => {
@@ -43,65 +43,74 @@ const makeOrRemoveDirectory = async (path: string) => {
   }
 }
 
-const backup = async () => {
-  // Firestore
-  await makeOrRemoveDirectory(FIRESTORE_DATA_DIR)
-  const collections = await firestoreBackups()
-  await fs.writeFile(FIRESTORE_DATA_PATH, JSON.stringify(collections, null, '  '))
+const backup = async (targets: string[]) => {
+  if (targets.includes('firestore')) {
+    await makeOrRemoveDirectory(FIRESTORE_DATA_DIR)
+    const collections = await firestoreBackups()
+    await fs.writeFile(FIRESTORE_DATA_PATH, JSON.stringify(collections, null, '  '))
+  }
 
-  // Authentication
-  await makeOrRemoveDirectory(AUTH_DATA_DIR)
-  await tools.auth.export(AUTH_DATA_PATH)
+  if (targets.includes('auth')) {
+    await makeOrRemoveDirectory(AUTH_DATA_DIR)
+    await tools.auth.export(AUTH_DATA_PATH)
+  }
 
-  // Storage
-  await makeOrRemoveDirectory(STORAGE_DATA_DIR)
-  if ((await execPromise(`gsutil ls gs://${STORAGE_BUCKET}`)).stdout) {
-    // > If you experience problems with multiprocessing on MacOS, they might be related to https://bugs.python.org/issue33725.
-    // > You can disable multiprocessing by editing your.boto config or by adding the following flag to your command: `-o "GSUtil:parallel_process_count=1"`.
-    // > Note that multithreading is still available even if you disable multiprocessing.
-    await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r gs://${STORAGE_BUCKET}/* ${STORAGE_DATA_DIR}`)
+  if (targets.includes('storage')) {
+    await makeOrRemoveDirectory(STORAGE_DATA_DIR)
+    if ((await execPromise(`gsutil ls gs://${STORAGE_BUCKET}`)).stdout) {
+      // > If you experience problems with multiprocessing on MacOS, they might be related to https://bugs.python.org/issue33725.
+      // > You can disable multiprocessing by editing your.boto config or by adding the following flag to your command: `-o "GSUtil:parallel_process_count=1"`.
+      // > Note that multithreading is still available even if you disable multiprocessing.
+      await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r gs://${STORAGE_BUCKET}/* ${STORAGE_DATA_DIR}`)
+    }
   }
 }
 
-const restore = async () => {
-  // Firestore
-  if (await fileExists(FIRESTORE_DATA_PATH)) {
-    await firestoreRestore(FIRESTORE_DATA_PATH, {
-      autoParseDates: true,
-      autoParseGeos: true,
-    })
+const restore = async (targets: string[]) => {
+  if (targets.includes('firestore')) {
+    if (await fileExists(FIRESTORE_DATA_PATH)) {
+      await firestoreRestore(FIRESTORE_DATA_PATH, {
+        autoParseDates: true,
+        autoParseGeos: true,
+      })
+    }
   }
 
-  // Authentication
-  if (await fileExists(AUTH_DATA_PATH)) {
-    await tools.auth.upload(AUTH_DATA_PATH, {
-      hashAlgo: 'HMAC_SHA256',
-      hashKey: 'N2RheXM=',
-    })
+  if (targets.includes('auth')) {
+    if (await fileExists(AUTH_DATA_PATH)) {
+      await tools.auth.upload(AUTH_DATA_PATH, {
+        hashAlgo: 'HMAC_SHA256',
+        hashKey: 'N2RheXM=',
+      })
+    }
   }
 
-  // Storage
-  if (await anyFileExists(STORAGE_DATA_DIR)) {
-    // > If you experience problems with multiprocessing on MacOS, they might be related to https://bugs.python.org/issue33725.
-    // > You can disable multiprocessing by editing your.boto config or by adding the following flag to your command: `-o "GSUtil:parallel_process_count=1"`.
-    // > Note that multithreading is still available even if you disable multiprocessing.
-    await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r ${STORAGE_DATA_DIR}/* gs://${STORAGE_BUCKET}`)
+  if (targets.includes('storage')) {
+    if (await anyFileExists(STORAGE_DATA_DIR)) {
+      // > If you experience problems with multiprocessing on MacOS, they might be related to https://bugs.python.org/issue33725.
+      // > You can disable multiprocessing by editing your.boto config or by adding the following flag to your command: `-o "GSUtil:parallel_process_count=1"`.
+      // > Note that multithreading is still available even if you disable multiprocessing.
+      await execPromise(`gsutil -m -o "GSUtil:parallel_process_count=1" cp -r ${STORAGE_DATA_DIR}/* gs://${STORAGE_BUCKET}`)
+    }
   }
 }
 
-const _delete = async () => {
-  // Firestore
-  await tools.firestore.delete({ allCollections: true })
+const _delete = async (targets: string[]) => {
+  if (targets.includes('firestore')) {
+    await tools.firestore.delete({ allCollections: true })
+  }
 
-  // Authentication
-  const authInstance = admin.auth()
-  const usersResult = await authInstance.listUsers()
-  const uids = usersResult.users.map((user) => user.uid)
-  await authInstance.deleteUsers(uids)
+  if (targets.includes('auth')) {
+    const authInstance = admin.auth()
+    const usersResult = await authInstance.listUsers()
+    const uids = usersResult.users.map((user) => user.uid)
+    await authInstance.deleteUsers(uids)
+  }
 
-  // Storage
-  if ((await execPromise(`gsutil ls gs://${STORAGE_BUCKET}`)).stdout) {
-    await execPromise(`gsutil rm gs://${STORAGE_BUCKET}/**`)
+  if (targets.includes('storage')) {
+    if ((await execPromise(`gsutil ls gs://${STORAGE_BUCKET}`)).stdout) {
+      await execPromise(`gsutil rm gs://${STORAGE_BUCKET}/**`)
+    }
   }
 }
 
@@ -116,16 +125,23 @@ const checkEnv = () => {
   }
 }
 
+const commaSeparatedList = (value: string) => {
+  return value.toLowerCase().split(',')
+}
+
 program
-  .version('0.0.8')
+  .version('0.1.0')
   .description('NPM package for backup, restore, delete and replace Firebase')
+  .option('--only <targets>', 'only execute to specified, comma-separated targets (e.g. "firestore,storage").', commaSeparatedList);
 
 program
   .command('backup')
   .description('backup Firestore, Authentication, Storage')
   .action(async () => {
     checkEnv()
-    await backup()
+    const options = program.opts()
+    const targets = options.only || ['firestore', 'auth', 'storage']
+    await backup(targets)
   })
 
 program
@@ -133,7 +149,9 @@ program
   .description('restore Firestore, Authentication, Storage')
   .action(async () => {
     checkEnv()
-    await restore()
+    const options = program.opts()
+    const targets = options.only || ['firestore', 'auth', 'storage']
+    await restore(targets)
   })
 
 program
@@ -141,7 +159,9 @@ program
   .description('delete Firestore, Authentication, Storage')
   .action(async () => {
     checkEnv()
-    await _delete()
+    const options = program.opts()
+    const targets = options.only || ['firestore', 'auth', 'storage']
+    await _delete(targets)
   })
 
 program
@@ -149,8 +169,10 @@ program
   .description('delete and restore')
   .action(async () => {
     checkEnv()
-    await _delete()
-    await restore()
+    const options = program.opts()
+    const targets = options.only || ['firestore', 'auth', 'storage']
+    await _delete(targets)
+    await restore(targets)
   })
 
 program.parse()
