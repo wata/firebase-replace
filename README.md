@@ -24,6 +24,9 @@ npm install -g firebase-replace
 # Your Firebase Project ID
 export FIREBASE_PROJECT_ID=XXXX-XXXXX
 
+# Your Storage Bucket Name
+export FIREBASE_STORAGE_BUCKET=XXXX-XXXXX.appspot.com
+
 # Your Firebase Service Account File Path
 export GOOGLE_APPLICATION_CREDENTIALS=./XXXX-XXXXX-firebase-adminsdk-XXXXX-XXXXXXXXXX.json
 ```
